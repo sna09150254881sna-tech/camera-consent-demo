@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <title>آزمایش آموزشی دوربین</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1220; --panel:#131e30; --line:#2b3a52; --text:#eef4ff; --muted:#b4c2d8; --accent:#6ee7b7; --blue:#8ab4ff; --danger:#ff9b9b; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; background:radial-gradient(circle at top,#172942,var(--bg) 55%); color:var(--text); }
+    main { width:min(760px,100%); margin:0 auto; padding:24px 16px 40px; }
+    .tag { display:inline-block; border:1px solid #356b5a; color:var(--accent); border-radius:999px; padding:5px 11px; font-size:.85rem; }
+    h1 { font-size:clamp(1.6rem,5vw,2.25rem); margin:14px 0 8px; }
+    p { line-height:1.9; color:var(--muted); }
+    .panel { background:rgba(19,30,48,.94); border:1px solid var(--line); border-radius:18px; padding:18px; margin-top:18px; box-shadow:0 14px 40px #0002; }
+    .notice { border-right:4px solid var(--blue); padding:10px 13px; background:#1b2b43; border-radius:8px; color:#e7efff; line-height:1.8; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    button { border:0; border-radius:11px; padding:12px 16px; font:inherit; font-weight:700; cursor:pointer; }
+    button:focus-visible { outline:3px solid white; outline-offset:3px; }
+    .primary { background:var(--accent); color:#062318; }
+    .secondary { background:#27364d; color:var(--text); border:1px solid #43536c; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    video { display:block; width:100%; max-height:440px; margin-top:14px; background:#05080e; border-radius:12px; aspect-ratio:4/3; object-fit:contain; }
+    .status { margin-top:12px; padding:10px 12px; border-radius:9px; background:#0c1727; border:1px solid var(--line); line-height:1.8; }
+    .status.error { color:var(--danger); }
+    .status.good { color:var(--accent); }
+    ul { line-height:2; color:var(--muted); padding-right:22px; }
+    footer { margin-top:20px; color:#8fa1bb; font-size:.85rem; line-height:1.8; }
+    .small { font-size:.92rem; }
+  </style>
+</head>
+<body>
+<main>
+  <span class="tag">آزمایش آموزشی و شفاف</span>
+  <h1>نمایش دوربین با اجازهٔ شما</h1>
+  <p>این صفحه برای یادگیری نحوهٔ کار مجوز دوربین در مرورگر ساخته شده است. دوربین فقط پس از فشردن دکمه و تأیید درخواست مرورگر فعال می‌شود.</p>
+
+  <section class="panel" aria-labelledby="privacy-title">
+    <h2 id="privacy-title">قبل از شروع، این موارد را بدانید</h2>
+    <div class="notice">
+      تصویر دوربین فقط در همین صفحه و روی دستگاه شما نمایش داده می‌شود. این نسخه عکس یا ویدئو نمی‌گیرد، چیزی آپلود نمی‌کند و هیچ داده‌ای به سرور نمی‌فرستد.
+    </div>
+    <ul>
+      <li>مرورگر باید از دوربین پشتیبانی کند و معمولاً صفحه باید از HTTPS باز شود.</li>
+      <li>با انتخاب «اجازه ندادن» می‌توانید درخواست را رد کنید.</li>
+      <li>هر زمان بخواهید با دکمهٔ «خاموش کردن دوربین» پخش را متوقف کنید.</li>
+    </ul>
+    <div class="actions">
+      <button id="startBtn" class="primary" type="button">درخواست اجازه و روشن کردن دوربین</button>
+      <button id="stopBtn" class="secondary" type="button" disabled>خاموش کردن دوربین</button>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite">دوربین خاموش است. برای شروع، دکمهٔ سبز را بزنید.</div>
+    <video id="preview" autoplay playsinline muted hidden></video>
+  </section>
+
+  <section class="panel">
+    <h2>چرا مرورگر اجازه می‌خواهد؟</h2>
+    <p class="small">مرورگرهای مدرن دسترسی به دوربین را محدود می‌کنند. سایت نمی‌تواند این مجوز را بی‌صدا از کاربر بگیرد؛ مرورگر باید درخواست را نمایش دهد و کاربر تصمیم بگیرد.</p>
+  </section>
+  <footer>نسخهٔ آموزشی ساده — بدون ثبت تصویر، بدون بارگذاری فایل، بدون تحلیل مخفی. برای خاموش‌کردن کامل دوربین، از دکمهٔ بالا استفاده کنید یا مجوز دوربین این سایت را در تنظیمات مرورگر لغو کنید.</footer>
+</main>
+<script>
+(() => {
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const preview = document.getElementById('preview');
+  const status = document.getElementById('status');
+  let activeStream = null;
+
+  function setStatus(message, type = '') {
+    status.textContent = message;
+    status.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function stopCamera() {
+    if (activeStream) {
+      activeStream.getTracks().forEach(track => track.stop());
+      activeStream = null;
+    }
+    preview.srcObject = null;
+    preview.hidden = true;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    setStatus('دوربین خاموش شد. هیچ تصویری ذخیره یا ارسال نشده است.', 'good');
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('این مرورگر از دسترسی دوربین پشتیبانی نمی‌کند یا صفحه با HTTPS باز نشده است.', 'error');
+      return;
+    }
+    startBtn.disabled = true;
+    setStatus('درخواست اجازه در مرورگر نمایش داده می‌شود. فقط در صورت تمایل اجازه بدهید.');
+    try {
+      activeStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+      preview.srcObject = activeStream;
+      preview.hidden = false;
+      stopBtn.disabled = false;
+      setStatus('دوربین روشن است. تصویر فقط روی همین دستگاه نمایش داده می‌شود؛ برای پایان، دکمهٔ خاموش کردن را بزنید.', 'good');
+      activeStream.getVideoTracks().forEach(track => {
+        track.addEventListener('ended', () => {
+          if (activeStream) stopCamera();
+        });
+      });
+    } catch (error) {
+      startBtn.disabled = false;
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setStatus('اجازه داده نشد. دوربین روشن نشده است؛ اگر خواستید، مجوز را از تنظیمات مرورگر تغییر دهید.', 'error');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        setStatus('دوربین سازگار پیدا نشد.', 'error');
+      } else {
+        setStatus('دسترسی به دوربین ممکن نشد (' + error.name + '). مطمئن شوید صفحه با HTTPS باز شده و مجوز مرورگر فعال است.', 'error');
+      }
+    }
+  });
+
+  stopBtn.addEventListener('click', stopCamera);
+  window.addEventListener('pagehide', () => {
+    if (activeStream) activeStream.getTracks().forEach(track => track.stop());
+  });
+})();
+</script>
+</body>
+</html>
